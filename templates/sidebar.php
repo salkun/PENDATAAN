@@ -19,16 +19,6 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'user';
     <!-- Sidebar Content -->
     <div class="sidebar-wrapper">
         <!-- User Panel -->
-        <div class="sidebar-user-panel">
-            <div class="user-avatar">
-                <i class="bi bi-person-fill"></i>
-            </div>
-            <div class="user-info">
-                <span class="user-name"><?= isset($_SESSION['nama_lengkap']) ? htmlspecialchars($_SESSION['nama_lengkap']) : 'User' ?></span>
-                <span class="user-role-badge role-<?= $role ?>"><?= strtoupper($role) ?></span>
-            </div>
-        </div>
-
         <nav class="sidebar-nav">
             <ul class="nav flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
                 
