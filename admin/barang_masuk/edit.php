@@ -37,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $new_tanggal_masuk = mysqli_real_escape_string($koneksi, $_POST['tanggal_masuk']);
     $new_jumlah = (int)$_POST['jumlah'];
     $new_supplier = mysqli_real_escape_string($koneksi, trim($_POST['supplier']));
+    $new_total_biaya = isset($_POST['total_biaya']) ? (int)preg_replace('/[^0-9]/', '', $_POST['total_biaya']) : 0;
     $new_keterangan = mysqli_real_escape_string($koneksi, trim($_POST['keterangan']));
 
     if (empty($kode_barang) || empty($nama_barang) || empty($kategori) || empty($satuan) || $new_jumlah <= 0 || empty($new_tanggal_masuk) || empty($new_supplier)) {
@@ -87,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     tanggal_masuk = '$new_tanggal_masuk', 
                     jumlah = $new_jumlah, 
                     supplier = '$new_supplier', 
+                    total_biaya = $new_total_biaya,
                     keterangan = '$new_keterangan' 
                 WHERE id_masuk = $id
             ");
@@ -261,7 +263,7 @@ include '../../templates/sidebar.php';
                                         </div>
 
                                         <!-- Supplier -->
-                                        <div class="col-md-12">
+                                        <div class="col-md-6">
                                             <label for="supplier" class="form-label fw-semibold text-secondary">Nama Supplier *</label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-white"><i class="bi bi-building"></i></span>
@@ -273,6 +275,22 @@ include '../../templates/sidebar.php';
                                                        placeholder="Contoh: PT. Sumber Agung" 
                                                        required>
                                             </div>
+                                        </div>
+
+                                        <!-- Total Biaya -->
+                                        <div class="col-md-6">
+                                            <label for="total_biaya" class="form-label fw-semibold text-secondary">Total Biaya Pembelian (Rp)</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white fw-bold">Rp</span>
+                                                <input type="text" 
+                                                       name="total_biaya" 
+                                                       id="total_biaya" 
+                                                       class="form-control" 
+                                                       value="<?= htmlspecialchars($transaction['total_biaya'] ?? 0) ?>" 
+                                                       placeholder="Contoh: 500000" 
+                                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                            </div>
+                                            <div class="form-text small text-muted">Kosongkan/0 jika bukan pembelian.</div>
                                         </div>
 
                                         <!-- Keterangan -->

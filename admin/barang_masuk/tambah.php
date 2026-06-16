@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tanggal_masuk = mysqli_real_escape_string($koneksi, $_POST['tanggal_masuk']);
     $jumlah = (int)$_POST['jumlah'];
     $supplier = mysqli_real_escape_string($koneksi, trim($_POST['supplier']));
+    $total_biaya = isset($_POST['total_biaya']) ? (int)preg_replace('/[^0-9]/', '', $_POST['total_biaya']) : 0;
     $keterangan = mysqli_real_escape_string($koneksi, trim($_POST['keterangan']));
 
     if (empty($kode_barang) || empty($nama_barang) || empty($kategori) || empty($satuan) || $jumlah <= 0 || empty($tanggal_masuk) || empty($supplier)) {
@@ -45,15 +46,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     UPDATE barang 
                     SET nama_barang = '$nama_barang', 
                         kategori = '$kategori', 
-                        satuan = '$satuan' 
+                        satuan = '$satuan',
+                        keterangan = '$keterangan'
                     WHERE id_barang = $id_barang
                 ");
                 if (!$update_barang) throw new Exception("Gagal memperbarui data barang");
             } else {
                 // If not exists, insert it as a new item
                 $insert_barang = mysqli_query($koneksi, "
-                    INSERT INTO barang (kode_barang, nama_barang, kategori, satuan, stok) 
-                    VALUES ('$kode_barang', '$nama_barang', '$kategori', '$satuan', 0)
+                    INSERT INTO barang (kode_barang, nama_barang, kategori, satuan, stok, keterangan) 
+                    VALUES ('$kode_barang', '$nama_barang', '$kategori', '$satuan', 0, '$keterangan')
                 ");
                 if (!$insert_barang) throw new Exception("Gagal mendaftarkan barang baru");
                 
@@ -62,8 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // 2. Insert into barang_masuk
             $insert_masuk = mysqli_query($koneksi, "
-                INSERT INTO barang_masuk (id_barang, tanggal_masuk, jumlah, supplier, keterangan) 
-                VALUES ($id_barang, '$tanggal_masuk', $jumlah, '$supplier', '$keterangan')
+                INSERT INTO barang_masuk (id_barang, tanggal_masuk, jumlah, supplier, total_biaya, keterangan) 
+                VALUES ($id_barang, '$tanggal_masuk', $jumlah, '$supplier', $total_biaya, '$keterangan')
             ");
             if (!$insert_masuk) throw new Exception("Gagal mencatat transaksi masuk");
 
@@ -229,7 +231,7 @@ include '../../templates/sidebar.php';
                                         </div>
 
                                         <!-- Supplier -->
-                                        <div class="col-md-12">
+                                        <div class="col-md-6">
                                             <label for="supplier" class="form-label fw-semibold text-secondary">Nama Supplier *</label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-white"><i class="bi bi-building"></i></span>
@@ -237,9 +239,24 @@ include '../../templates/sidebar.php';
                                                        name="supplier" 
                                                        id="supplier" 
                                                        class="form-control" 
-                                                       placeholder="Contoh: PT. Sumber Agung, CV. Jaya Abadi" 
+                                                       placeholder="Contoh: PT. Sumber Agung" 
                                                        required>
                                             </div>
+                                        </div>
+
+                                        <!-- Total Biaya -->
+                                        <div class="col-md-6">
+                                            <label for="total_biaya" class="form-label fw-semibold text-secondary">Total Biaya Pembelian (Rp)</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text bg-white fw-bold">Rp</span>
+                                                <input type="text" 
+                                                       name="total_biaya" 
+                                                       id="total_biaya" 
+                                                       class="form-control" 
+                                                       placeholder="Contoh: 500000" 
+                                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                            </div>
+                                            <div class="form-text small text-muted">Kosongkan jika bukan pembelian. Hanya angka.</div>
                                         </div>
 
                                         <!-- Keterangan -->

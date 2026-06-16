@@ -125,6 +125,8 @@ include '../../templates/sidebar.php';
                                     <th class="small text-uppercase fw-bold text-muted">Nama Barang</th>
                                     <th class="small text-uppercase fw-bold text-muted">Supplier</th>
                                     <th class="small text-uppercase fw-bold text-muted text-center" style="width: 10%;">Jumlah</th>
+                                    <th class="small text-uppercase fw-bold text-muted text-end">Harga Satuan</th>
+                                    <th class="small text-uppercase fw-bold text-muted text-end">Total Biaya</th>
                                     <th class="small text-uppercase fw-bold text-muted">Keterangan</th>
                                     <th class="small text-uppercase fw-bold text-muted text-center" style="width: 120px;">Aksi</th>
                                 </tr>
@@ -144,6 +146,12 @@ include '../../templates/sidebar.php';
                                             <td class="text-center fw-bold text-success">
                                                 +<?= number_format($row['jumlah']) ?> <span class="text-muted small fw-normal"><?= htmlspecialchars($row['satuan']) ?></span>
                                             </td>
+                                            <td class="text-end fw-semibold text-secondary">
+                                                <?= $row['total_biaya'] > 0 ? 'Rp ' . number_format($row['total_biaya'] / $row['jumlah'], 0, ',', '.') : '-' ?>
+                                            </td>
+                                            <td class="text-end fw-semibold text-dark">
+                                                <?= $row['total_biaya'] > 0 ? 'Rp ' . number_format($row['total_biaya'], 0, ',', '.') : '-' ?>
+                                            </td>
                                             <td class="text-muted small"><?= htmlspecialchars($row['keterangan'] ?: '-') ?></td>
                                             <td class="text-center">
                                                 <div class="d-flex justify-content-center gap-1">
@@ -161,7 +169,7 @@ include '../../templates/sidebar.php';
                                     <?php endwhile; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-muted">Belum ada data transaksi barang masuk.</td>
+                                        <td colspan="10" class="text-center py-4 text-muted">Belum ada data transaksi barang masuk.</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>

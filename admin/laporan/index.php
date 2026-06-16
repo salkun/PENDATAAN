@@ -11,11 +11,18 @@ if ($_SESSION['role'] !== 'admin') {
 // Set up filter parameters
 $jenis_laporan = isset($_GET['jenis']) ? $_GET['jenis'] : 'stok'; // stok, masuk, keluar
 $id_barang = isset($_GET['id_barang']) ? (int)$_GET['id_barang'] : 0;
-$bulan_tahun = isset($_GET['bulan_tahun']) ? $_GET['bulan_tahun'] : date('Y-m'); // format YYYY-MM
+$bulan_tahun = isset($_GET['bulan_tahun']) ? $_GET['bulan_tahun'] : ''; // Default to empty (all time)
 
-// Parsing year and month for query
-$year = date('Y', strtotime($bulan_tahun . '-01'));
-$month = date('m', strtotime($bulan_tahun . '-01'));
+// Prepare base where clauses
+$where_masuk = "WHERE 1=1";
+$where_keluar = "WHERE 1=1";
+
+if (!empty($bulan_tahun)) {
+    $year = date('Y', strtotime($bulan_tahun . '-01'));
+    $month = date('m', strtotime($bulan_tahun . '-01'));
+    $where_masuk = "WHERE YEAR(bm.tanggal_masuk) = '$year' AND MONTH(bm.tanggal_masuk) = '$month'";
+    $where_keluar = "WHERE YEAR(bk.tanggal_keluar) = '$year' AND MONTH(bk.tanggal_keluar) = '$month'";
+}
 
 // Fetch items for the dropdown
 $query_dropdown = mysqli_query($koneksi, "SELECT id_barang, kode_barang, nama_barang FROM barang ORDER BY nama_barang ASC");
@@ -39,20 +46,18 @@ if ($jenis_laporan === 'stok') {
         ORDER BY b.nama_barang ASC
     ");
 } elseif ($jenis_laporan === 'masuk') {
-    $where_masuk = "WHERE YEAR(bm.tanggal_masuk) = '$year' AND MONTH(bm.tanggal_masuk) = '$month'";
     if ($id_barang > 0) {
         $where_masuk .= " AND bm.id_barang = $id_barang";
     }
     
     $query_result = mysqli_query($koneksi, "
-        SELECT bm.tanggal_masuk AS tanggal, b.kode_barang, b.nama_barang, bm.jumlah, b.satuan, bm.supplier AS pihak_terkait, bm.keterangan
+        SELECT bm.tanggal_masuk AS tanggal, b.kode_barang, b.nama_barang, bm.jumlah, b.satuan, bm.supplier AS pihak_terkait, bm.total_biaya, bm.keterangan
         FROM barang_masuk bm
         JOIN barang b ON bm.id_barang = b.id_barang
         $where_masuk
         ORDER BY bm.tanggal_masuk DESC, bm.id_masuk DESC
     ");
 } elseif ($jenis_laporan === 'keluar') {
-    $where_keluar = "WHERE YEAR(bk.tanggal_keluar) = '$year' AND MONTH(bk.tanggal_keluar) = '$month'";
     if ($id_barang > 0) {
         $where_keluar .= " AND bk.id_barang = $id_barang";
     }
@@ -176,6 +181,10 @@ include '../../templates/sidebar.php';
                                         <th class="small text-uppercase fw-bold text-muted py-3">Kode</th>
                                         <th class="small text-uppercase fw-bold text-muted py-3">Nama Barang</th>
                                         <th class="small text-uppercase fw-bold text-muted text-center py-3">Jumlah</th>
+                                        <?php if ($jenis_laporan === 'masuk'): ?>
+                                            <th class="small text-uppercase fw-bold text-muted text-end py-3">Harga Satuan</th>
+                                            <th class="small text-uppercase fw-bold text-muted text-end py-3">Total Biaya</th>
+                                        <?php endif; ?>
                                         <th class="small text-uppercase fw-bold text-muted py-3"><?= $jenis_laporan === 'masuk' ? 'Supplier' : 'Tujuan' ?></th>
                                     </tr>
                                 <?php endif; ?>
@@ -184,7 +193,15 @@ include '../../templates/sidebar.php';
                                 <?php if (mysqli_num_rows($query_result) > 0): ?>
                                     <?php 
                                     $no = 1;
+                                    $total_jumlah = 0;
+                                    $total_biaya = 0;
                                     while ($row = mysqli_fetch_assoc($query_result)): 
+                                        if ($jenis_laporan === 'masuk') {
+                                            $total_jumlah += $row['jumlah'];
+                                            $total_biaya += $row['total_biaya'];
+                                        } elseif ($jenis_laporan === 'keluar') {
+                                            $total_jumlah += $row['jumlah'];
+                                        }
                                     ?>
                                         <?php if ($jenis_laporan === 'stok'): ?>
                                             <tr>
@@ -206,13 +223,37 @@ include '../../templates/sidebar.php';
                                                     <?= $jenis_laporan === 'masuk' ? '+' : '-' ?><?= number_format($row['jumlah']) ?> 
                                                     <span class="text-muted fw-normal small"><?= htmlspecialchars($row['satuan']) ?></span>
                                                 </td>
+                                                <?php if ($jenis_laporan === 'masuk'): ?>
+                                                    <td class="text-end fw-semibold text-secondary">
+                                                        <?= isset($row['total_biaya']) && $row['total_biaya'] > 0 ? 'Rp ' . number_format($row['total_biaya'] / $row['jumlah'], 0, ',', '.') : '-' ?>
+                                                    </td>
+                                                    <td class="text-end fw-semibold text-dark">
+                                                        <?= isset($row['total_biaya']) && $row['total_biaya'] > 0 ? 'Rp ' . number_format($row['total_biaya'], 0, ',', '.') : '-' ?>
+                                                    </td>
+                                                <?php endif; ?>
                                                 <td class="text-dark small"><?= htmlspecialchars($row['pihak_terkait']) ?></td>
                                             </tr>
                                         <?php endif; ?>
                                     <?php endwhile; ?>
+
+                                    <?php if ($jenis_laporan === 'masuk'): ?>
+                                        <tr class="table-light fw-bold border-top border-dark-subtle">
+                                            <td colspan="4" class="text-end py-3 text-uppercase small text-muted">Total:</td>
+                                            <td class="text-center py-3 text-success font-monospace">+<?= number_format($total_jumlah) ?></td>
+                                            <td></td>
+                                            <td class="text-end py-3 text-primary">Rp <?= number_format($total_biaya, 0, ',', '.') ?></td>
+                                            <td></td>
+                                        </tr>
+                                    <?php elseif ($jenis_laporan === 'keluar'): ?>
+                                        <tr class="table-light fw-bold border-top border-dark-subtle">
+                                            <td colspan="4" class="text-end py-3 text-uppercase small text-muted">Total:</td>
+                                            <td class="text-center py-3 text-danger font-monospace">-<?= number_format($total_jumlah) ?></td>
+                                            <td></td>
+                                        </tr>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="<?= $jenis_laporan === 'stok' ? '5' : '6' ?>" class="text-center py-5 text-muted">
+                                        <td colspan="<?= $jenis_laporan === 'stok' ? '5' : ($jenis_laporan === 'masuk' ? '8' : '6') ?>" class="text-center py-5 text-muted">
                                             <i class="bi bi-folder-x fs-1 d-block mb-2 opacity-50"></i>
                                             Tidak ada data untuk filter yang dipilih.
                                         </td>

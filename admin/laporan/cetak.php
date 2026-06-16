@@ -11,10 +11,7 @@ if ($_SESSION['role'] !== 'admin') {
 // Retrieve filter parameters
 $jenis_laporan = isset($_GET['jenis']) ? $_GET['jenis'] : 'stok'; 
 $id_barang = isset($_GET['id_barang']) ? (int)$_GET['id_barang'] : 0;
-$bulan_tahun = isset($_GET['bulan_tahun']) ? $_GET['bulan_tahun'] : date('Y-m'); 
-
-$year = date('Y', strtotime($bulan_tahun . '-01'));
-$month = date('m', strtotime($bulan_tahun . '-01'));
+$bulan_tahun = isset($_GET['bulan_tahun']) ? $_GET['bulan_tahun'] : ''; 
 
 // Build title based on filter
 $title = "Laporan ";
@@ -50,15 +47,21 @@ if ($jenis_laporan === 'stok') {
     ");
 } elseif ($jenis_laporan === 'masuk') {
     $title .= "Riwayat Barang Masuk";
-    $subtitle = "Periode: " . date('F Y', strtotime($bulan_tahun . '-01')) . " | Barang: $nama_barang_filter";
-    
-    $where_masuk = "WHERE YEAR(bm.tanggal_masuk) = '$year' AND MONTH(bm.tanggal_masuk) = '$month'";
+    if (!empty($bulan_tahun)) {
+        $subtitle = "Periode: " . date('F Y', strtotime($bulan_tahun . '-01')) . " | Barang: $nama_barang_filter";
+        $year = date('Y', strtotime($bulan_tahun . '-01'));
+        $month = date('m', strtotime($bulan_tahun . '-01'));
+        $where_masuk = "WHERE YEAR(bm.tanggal_masuk) = '$year' AND MONTH(bm.tanggal_masuk) = '$month'";
+    } else {
+        $subtitle = "Periode: Semua Waktu | Barang: $nama_barang_filter";
+        $where_masuk = "WHERE 1=1";
+    }
     if ($id_barang > 0) {
         $where_masuk .= " AND bm.id_barang = $id_barang";
     }
     
     $query_result = mysqli_query($koneksi, "
-        SELECT bm.tanggal_masuk AS tanggal, b.kode_barang, b.nama_barang, bm.jumlah, b.satuan, bm.supplier AS pihak_terkait, bm.keterangan
+        SELECT bm.tanggal_masuk AS tanggal, b.kode_barang, b.nama_barang, bm.jumlah, b.satuan, bm.supplier AS pihak_terkait, bm.total_biaya, bm.keterangan
         FROM barang_masuk bm
         JOIN barang b ON bm.id_barang = b.id_barang
         $where_masuk
@@ -66,9 +69,15 @@ if ($jenis_laporan === 'stok') {
     ");
 } elseif ($jenis_laporan === 'keluar') {
     $title .= "Riwayat Barang Keluar";
-    $subtitle = "Periode: " . date('F Y', strtotime($bulan_tahun . '-01')) . " | Barang: $nama_barang_filter";
-    
-    $where_keluar = "WHERE YEAR(bk.tanggal_keluar) = '$year' AND MONTH(bk.tanggal_keluar) = '$month'";
+    if (!empty($bulan_tahun)) {
+        $subtitle = "Periode: " . date('F Y', strtotime($bulan_tahun . '-01')) . " | Barang: $nama_barang_filter";
+        $year = date('Y', strtotime($bulan_tahun . '-01'));
+        $month = date('m', strtotime($bulan_tahun . '-01'));
+        $where_keluar = "WHERE YEAR(bk.tanggal_keluar) = '$year' AND MONTH(bk.tanggal_keluar) = '$month'";
+    } else {
+        $subtitle = "Periode: Semua Waktu | Barang: $nama_barang_filter";
+        $where_keluar = "WHERE 1=1";
+    }
     if ($id_barang > 0) {
         $where_keluar .= " AND bk.id_barang = $id_barang";
     }
@@ -240,9 +249,13 @@ if ($jenis_laporan === 'stok') {
                     <th style="width: 5%;">No</th>
                     <th style="width: 15%;">Tanggal</th>
                     <th style="width: 15%;">Kode Barang</th>
-                    <th style="width: 25%;">Nama Barang</th>
+                    <th style="width: 20%;">Nama Barang</th>
                     <th style="width: 10%;">Jumlah</th>
                     <th style="width: 10%;">Satuan</th>
+                    <?php if ($jenis_laporan === 'masuk'): ?>
+                        <th style="width: 12%;">Harga Satuan</th>
+                        <th style="width: 15%;">Total Biaya</th>
+                    <?php endif; ?>
                     <th style="width: 20%;"><?= $jenis_laporan === 'masuk' ? 'Supplier' : 'Tujuan' ?></th>
                 </tr>
             <?php endif; ?>
@@ -251,7 +264,15 @@ if ($jenis_laporan === 'stok') {
             <?php if (mysqli_num_rows($query_result) > 0): ?>
                 <?php 
                 $no = 1;
+                $total_jumlah = 0;
+                $total_biaya = 0;
                 while ($row = mysqli_fetch_assoc($query_result)): 
+                    if ($jenis_laporan === 'masuk') {
+                        $total_jumlah += $row['jumlah'];
+                        $total_biaya += $row['total_biaya'];
+                    } elseif ($jenis_laporan === 'keluar') {
+                        $total_jumlah += $row['jumlah'];
+                    }
                 ?>
                     <?php if ($jenis_laporan === 'stok'): ?>
                         <tr>
@@ -270,13 +291,35 @@ if ($jenis_laporan === 'stok') {
                             <td><?= htmlspecialchars($row['nama_barang']) ?></td>
                             <td class="text-center"><b><?= number_format($row['jumlah']) ?></b></td>
                             <td class="text-center"><?= htmlspecialchars($row['satuan']) ?></td>
+                            <?php if ($jenis_laporan === 'masuk'): ?>
+                                <td class="text-right"><?= isset($row['total_biaya']) && $row['total_biaya'] > 0 ? 'Rp ' . number_format($row['total_biaya'] / $row['jumlah'], 0, ',', '.') : '-' ?></td>
+                                <td class="text-right"><?= isset($row['total_biaya']) && $row['total_biaya'] > 0 ? 'Rp ' . number_format($row['total_biaya'], 0, ',', '.') : '-' ?></td>
+                            <?php endif; ?>
                             <td><?= htmlspecialchars($row['pihak_terkait']) ?></td>
                         </tr>
                     <?php endif; ?>
                 <?php endwhile; ?>
+
+                <?php if ($jenis_laporan === 'masuk'): ?>
+                    <tr style="background-color: #f9f9f9; font-weight: bold;">
+                        <td colspan="4" class="text-right">Total:</td>
+                        <td class="text-center"><?= number_format($total_jumlah) ?></td>
+                        <td></td>
+                        <td></td>
+                        <td class="text-right">Rp <?= number_format($total_biaya, 0, ',', '.') ?></td>
+                        <td></td>
+                    </tr>
+                <?php elseif ($jenis_laporan === 'keluar'): ?>
+                    <tr style="background-color: #f9f9f9; font-weight: bold;">
+                        <td colspan="4" class="text-right">Total:</td>
+                        <td class="text-center"><?= number_format($total_jumlah) ?></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                <?php endif; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="<?= $jenis_laporan === 'stok' ? '6' : '7' ?>" class="text-center">Tidak ada data untuk periode/filter ini.</td>
+                    <td colspan="<?= $jenis_laporan === 'stok' ? '6' : ($jenis_laporan === 'masuk' ? '9' : '7') ?>" class="text-center">Tidak ada data untuk periode/filter ini.</td>
                 </tr>
             <?php endif; ?>
         </tbody>
