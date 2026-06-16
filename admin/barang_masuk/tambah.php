@@ -45,15 +45,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     UPDATE barang 
                     SET nama_barang = '$nama_barang', 
                         kategori = '$kategori', 
-                        satuan = '$satuan' 
+                        satuan = '$satuan',
+                        keterangan = '$keterangan'
                     WHERE id_barang = $id_barang
                 ");
                 if (!$update_barang) throw new Exception("Gagal memperbarui data barang");
             } else {
                 // If not exists, insert it as a new item
                 $insert_barang = mysqli_query($koneksi, "
-                    INSERT INTO barang (kode_barang, nama_barang, kategori, satuan, stok) 
-                    VALUES ('$kode_barang', '$nama_barang', '$kategori', '$satuan', 0)
+                    INSERT INTO barang (kode_barang, nama_barang, kategori, satuan, stok, keterangan) 
+                    VALUES ('$kode_barang', '$nama_barang', '$kategori', '$satuan', 0, '$keterangan')
                 ");
                 if (!$insert_barang) throw new Exception("Gagal mendaftarkan barang baru");
                 
