@@ -40,7 +40,8 @@ if ($jenis_laporan === 'stok') {
     $query_result = mysqli_query($koneksi, "
         SELECT b.kode_barang, b.nama_barang, b.kategori, b.satuan, b.keterangan,
                (COALESCE((SELECT SUM(jumlah) FROM barang_masuk WHERE id_barang = b.id_barang), 0) - 
-                COALESCE((SELECT SUM(jumlah) FROM barang_keluar WHERE id_barang = b.id_barang), 0)) AS stok
+                COALESCE((SELECT SUM(jumlah) FROM barang_keluar WHERE id_barang = b.id_barang), 0)) AS stok,
+               (SELECT COALESCE(total_biaya / jumlah, 0) FROM barang_masuk WHERE id_barang = b.id_barang ORDER BY id_masuk DESC LIMIT 1) AS harga_beli
         FROM barang b
         $where_stok
         ORDER BY b.nama_barang ASC
@@ -173,6 +174,8 @@ include '../../templates/sidebar.php';
                                         <th class="small text-uppercase fw-bold text-muted py-3">Nama Barang</th>
                                         <th class="small text-uppercase fw-bold text-muted py-3">Kategori</th>
                                         <th class="small text-uppercase fw-bold text-muted text-center py-3">Stok Saat Ini</th>
+                                        <th class="small text-uppercase fw-bold text-muted text-end py-3">Harga Beli</th>
+                                        <th class="small text-uppercase fw-bold text-muted text-end py-3">Total Harga</th>
                                     </tr>
                                 <?php else: ?>
                                     <tr>
@@ -201,6 +204,9 @@ include '../../templates/sidebar.php';
                                             $total_biaya += $row['total_biaya'];
                                         } elseif ($jenis_laporan === 'keluar') {
                                             $total_jumlah += $row['jumlah'];
+                                        } elseif ($jenis_laporan === 'stok') {
+                                            $total_jumlah += $row['stok'];
+                                            $total_biaya += ($row['stok'] * $row['harga_beli']);
                                         }
                                     ?>
                                         <?php if ($jenis_laporan === 'stok'): ?>
@@ -211,6 +217,12 @@ include '../../templates/sidebar.php';
                                                 <td class="text-muted small"><?= htmlspecialchars($row['kategori']) ?></td>
                                                 <td class="text-center fw-bold <?= $row['stok'] > 0 ? 'text-success' : 'text-danger' ?>">
                                                     <?= number_format($row['stok']) ?> <span class="text-muted fw-normal small"><?= htmlspecialchars($row['satuan']) ?></span>
+                                                </td>
+                                                <td class="text-end fw-semibold text-secondary">
+                                                    <?= $row['harga_beli'] > 0 ? 'Rp ' . number_format($row['harga_beli'], 0, ',', '.') : '-' ?>
+                                                </td>
+                                                <td class="text-end fw-semibold text-dark">
+                                                    <?= ($row['stok'] * $row['harga_beli']) > 0 ? 'Rp ' . number_format($row['stok'] * $row['harga_beli'], 0, ',', '.') : '-' ?>
                                                 </td>
                                             </tr>
                                         <?php else: ?>
@@ -236,7 +248,14 @@ include '../../templates/sidebar.php';
                                         <?php endif; ?>
                                     <?php endwhile; ?>
 
-                                    <?php if ($jenis_laporan === 'masuk'): ?>
+                                    <?php if ($jenis_laporan === 'stok'): ?>
+                                        <tr class="table-light fw-bold border-top border-dark-subtle">
+                                            <td colspan="4" class="text-end py-3 text-uppercase small text-muted">Total:</td>
+                                            <td class="text-center py-3 text-success font-monospace"><?= number_format($total_jumlah) ?></td>
+                                            <td></td>
+                                            <td class="text-end py-3 text-primary">Rp <?= number_format($total_biaya, 0, ',', '.') ?></td>
+                                        </tr>
+                                    <?php elseif ($jenis_laporan === 'masuk'): ?>
                                         <tr class="table-light fw-bold border-top border-dark-subtle">
                                             <td colspan="4" class="text-end py-3 text-uppercase small text-muted">Total:</td>
                                             <td class="text-center py-3 text-success font-monospace">+<?= number_format($total_jumlah) ?></td>
@@ -253,7 +272,7 @@ include '../../templates/sidebar.php';
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="<?= $jenis_laporan === 'stok' ? '5' : ($jenis_laporan === 'masuk' ? '8' : '6') ?>" class="text-center py-5 text-muted">
+                                        <td colspan="<?= $jenis_laporan === 'stok' ? '7' : ($jenis_laporan === 'masuk' ? '8' : '6') ?>" class="text-center py-5 text-muted">
                                             <i class="bi bi-folder-x fs-1 d-block mb-2 opacity-50"></i>
                                             Tidak ada data untuk filter yang dipilih.
                                         </td>

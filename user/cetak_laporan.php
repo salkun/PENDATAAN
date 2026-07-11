@@ -40,7 +40,8 @@ if ($jenis_laporan === 'stok') {
     $query_result = mysqli_query($koneksi, "
         SELECT b.kode_barang, b.nama_barang, b.kategori, b.satuan, b.keterangan,
                (COALESCE((SELECT SUM(jumlah) FROM barang_masuk WHERE id_barang = b.id_barang), 0) - 
-                COALESCE((SELECT SUM(jumlah) FROM barang_keluar WHERE id_barang = b.id_barang), 0)) AS stok
+                COALESCE((SELECT SUM(jumlah) FROM barang_keluar WHERE id_barang = b.id_barang), 0)) AS stok,
+               (SELECT COALESCE(total_biaya / jumlah, 0) FROM barang_masuk WHERE id_barang = b.id_barang ORDER BY id_masuk DESC LIMIT 1) AS harga_beli
         FROM barang b
         $where_stok
         ORDER BY b.nama_barang ASC
@@ -237,10 +238,12 @@ if ($jenis_laporan === 'stok') {
                 <tr>
                     <th style="width: 5%;">No</th>
                     <th style="width: 15%;">Kode Barang</th>
-                    <th style="width: 30%;">Nama Barang</th>
-                    <th style="width: 20%;">Kategori</th>
-                    <th style="width: 15%;">Stok Saat Ini</th>
-                    <th style="width: 15%;">Satuan</th>
+                    <th style="width: 25%;">Nama Barang</th>
+                    <th style="width: 15%;">Kategori</th>
+                    <th style="width: 10%;">Stok Saat Ini</th>
+                    <th style="width: 10%;">Satuan</th>
+                    <th style="width: 10%;">Harga Beli</th>
+                    <th style="width: 10%;">Total Harga</th>
                 </tr>
             <?php else: ?>
                 <tr>
@@ -270,6 +273,9 @@ if ($jenis_laporan === 'stok') {
                         $total_biaya += $row['total_biaya'];
                     } elseif ($jenis_laporan === 'keluar') {
                         $total_jumlah += $row['jumlah'];
+                    } elseif ($jenis_laporan === 'stok') {
+                        $total_jumlah += $row['stok'];
+                        $total_biaya += ($row['stok'] * $row['harga_beli']);
                     }
                 ?>
                     <?php if ($jenis_laporan === 'stok'): ?>
@@ -280,6 +286,8 @@ if ($jenis_laporan === 'stok') {
                             <td><?= htmlspecialchars($row['kategori']) ?></td>
                             <td class="text-center"><b><?= number_format($row['stok']) ?></b></td>
                             <td class="text-center"><?= htmlspecialchars($row['satuan']) ?></td>
+                            <td class="text-right"><?= $row['harga_beli'] > 0 ? 'Rp ' . number_format($row['harga_beli'], 0, ',', '.') : '-' ?></td>
+                            <td class="text-right"><?= ($row['stok'] * $row['harga_beli']) > 0 ? 'Rp ' . number_format($row['stok'] * $row['harga_beli'], 0, ',', '.') : '-' ?></td>
                         </tr>
                     <?php else: ?>
                         <tr>
@@ -298,7 +306,15 @@ if ($jenis_laporan === 'stok') {
                     <?php endif; ?>
                 <?php endwhile; ?>
 
-                <?php if ($jenis_laporan === 'masuk'): ?>
+                <?php if ($jenis_laporan === 'stok'): ?>
+                    <tr style="background-color: #f9f9f9; font-weight: bold;">
+                        <td colspan="4" class="text-right">Total:</td>
+                        <td class="text-center"><?= number_format($total_jumlah) ?></td>
+                        <td></td>
+                        <td></td>
+                        <td class="text-right">Rp <?= number_format($total_biaya, 0, ',', '.') ?></td>
+                    </tr>
+                <?php elseif ($jenis_laporan === 'masuk'): ?>
                     <tr style="background-color: #f9f9f9; font-weight: bold;">
                         <td colspan="4" class="text-right">Total:</td>
                         <td class="text-center"><?= number_format($total_jumlah) ?></td>
@@ -317,7 +333,7 @@ if ($jenis_laporan === 'stok') {
                 <?php endif; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="<?= $jenis_laporan === 'stok' ? '6' : ($jenis_laporan === 'masuk' ? '9' : '7') ?>" class="text-center">Tidak ada data untuk periode/filter ini.</td>
+                    <td colspan="<?= $jenis_laporan === 'stok' ? '8' : ($jenis_laporan === 'masuk' ? '9' : '7') ?>" class="text-center">Tidak ada data untuk periode/filter ini.</td>
                 </tr>
             <?php endif; ?>
         </tbody>
